@@ -90,14 +90,13 @@ testing                 [Status: 301, Size: 178, Words: 6, Lines: 8, Duration: 1
 ```
 We get an interesting directory, testing, upon visiting it, we end up with a jar file, that we download and decompile it for further information gathering.
 
-![testing endpoint](/assets/img/posts/cypher/testing.png)  
-_testing endpoint_  
-
+![Cypher HTB Homepage](/assets/img/posts/cypher/testing.png)
+_testing directory listing_
 
 We download the [jd-gui decompiler](https://java-decompiler.github.io/ "Java Decompiler") for further analysis.      
 
 We open the jar file custom-apoc-extension-1.0-SNAPSHOT.jar :  
-![JAR file structure](/assets/img/posts/cypher/java_decomp.png)  
+![JAR file structure](/assets/img/posts/cypher/java_decomp.png)
 _JAR file structure_  
 
 Among these files, CustomFunctions catches our intention, we check its content, we get some important info, a command injection vulnerability in the getUrlStatusCode method! as there is no sanitization of url param, that is directly passed into sh -c command.
@@ -117,7 +116,7 @@ _Website Loginpage_
 
 As we don't have any credentials, we try (') as a username, and we get an error revealing that Neo4j database is used in the backend.   
 
-![Cypher HTB Login error message](/assets/img/posts/cypher/webpage3.png)  
+![Cypher HTB Login error message](/assets/img/posts/cypher/webpage3.png)
 _Login error message_ 
 
 Upon inspecting the request and response using Burpsuite:
@@ -169,7 +168,7 @@ We start our listener, on port 4444 :
 Listening on 0.0.0.0 4444
 ```
 And we send the request with the crafted payload :  
-![Malicious request](/assets/img/posts/cypher/rce.png)  
+![Malicious request](/assets/img/posts/cypher/rce.png)
 _Malicious request_ 
 
 And we get our reverse shell as neo4j!  
@@ -307,16 +306,16 @@ According to their Github repo : [https://github.com/blacklanternsecurity/bbot](
 Used as a domain finder, web spider, email gatherer, web scanner, etc.
 
 A simple Google dorking for privesc exploits for the current version of bbot(v2.1.0), we find that there is an existing exploit :  
-![privesc exploit](/assets/img/posts/cypher/privesc.png)  
+![privesc exploit](/assets/img/posts/cypher/privesc.png)
 _Privesc exploit google search_ 
 
 We enter the first link, we find the exploit, made by Huseyin Mardinli:  
-![privesc exploit steps](/assets/img/posts/cypher/steps.png)  
+![privesc exploit steps](/assets/img/posts/cypher/steps.png)
 _Privesc exploit steps_   
 
 We visit the exploit repo ([https://github.com/Housma/bbot-privesc](https://github.com/Housma/bbot-privesc)), and we try to understand how does the exploit work : 
 
-![privesc exploit steps](/assets/img/posts/cypher/exploit_content.png)  
+![privesc exploit steps](/assets/img/posts/cypher/exploit_content.png)
 _Exploit content_
 
 So we have a python script, systeminfo_enum.py :
