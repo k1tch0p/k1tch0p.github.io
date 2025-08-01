@@ -19,8 +19,8 @@ title: k1tch0p's Blog # the main title
 tagline: Penetration Tester | Ethical hacker # it will display as the subtitle
 
 description: >- # used by seo meta and the atom feed
-  A minimal, responsive and feature-rich Jekyll theme for technical writing.
-
+  A blog about cybersecurity, penetration testing, and ethical hacking.
+  Follow my journey as I explore the world of security and share my insights.
 # Fill in the protocol & hostname for your site.
 # E.g. 'https://username.github.io', note that it does not end with a '/'.
 url: "https://k1tch0p.github.io"
