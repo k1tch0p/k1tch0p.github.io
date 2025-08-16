@@ -1,0 +1,71 @@
+
+
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>http://0.0.0.0:4000/</id>
+  <title>k1tch0p's Blog</title>
+  <subtitle>A blog about cybersecurity, penetration testing, and ethical hacking. Follow my journey as I explore the world of security and share my insights.</subtitle>
+  <updated>2025-08-16T10:10:46+00:00</updated>
+  <author>
+    <name>k1tch0p</name>
+    <uri>http://0.0.0.0:4000/</uri>
+  </author>
+  <link rel="self" type="application/atom+xml" href="http://0.0.0.0:4000/feed.xml"/>
+  <link rel="alternate" type="text/html" hreflang="en"
+    href="http://0.0.0.0:4000/"/>
+  <generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator>
+  <rights> © 2025 k1tch0p </rights>
+  <icon>/assets/img/favicons/favicon.ico</icon>
+  <logo>/assets/img/favicons/favicon-96x96.png</logo>
+
+
+  
+  <entry>
+    <title>HTB Code</title>
+    <link href="http://0.0.0.0:4000/posts/HTB_code/" rel="alternate" type="text/html" title="HTB Code" />
+    <published>2025-08-03T00:00:00+00:00</published>
+  
+    <updated>2025-08-16T09:34:26+00:00</updated>
+  
+    <id>http://0.0.0.0:4000/posts/HTB_code/</id>
+    <content type="text/html" src="http://0.0.0.0:4000/posts/HTB_code/" />
+    <author>
+      <name>k1tch0p</name>
+    </author>
+
+  
+    
+    <category term="HTB" />
+    
+  
+
+  <summary>OS: 🐧 Linux Difficulty: Easy Points: 20 Author: FisMatHack   Code starts by exploiting an RCE in a Python Code Editor web app by using a Python Jail Bypass. Once we have the foothold and after files inspection, we find a databas file with users creds, that we crack to move laterally. For the privesc, the user has permissions to a backup utility script, to be exploited via a path traversal vulne...</summary>
+
+  </entry>
+
+  
+  <entry>
+    <title>HTB Cypher</title>
+    <link href="http://0.0.0.0:4000/posts/HTB_cypher/" rel="alternate" type="text/html" title="HTB Cypher" />
+    <published>2025-07-31T00:00:00+00:00</published>
+  
+    <updated>2025-08-01T20:57:24+00:00</updated>
+  
+    <id>http://0.0.0.0:4000/posts/HTB_cypher/</id>
+    <content type="text/html" src="http://0.0.0.0:4000/posts/HTB_cypher/" />
+    <author>
+      <name>k1tch0p</name>
+    </author>
+
+  
+    
+    <category term="HTB" />
+    
+  
+
+  <summary>OS: 🐧 Linux Difficulty: Medium Points: 40 Author: Techromancer   Cypher is focused on a cypher injection flaw granting a shell as neo4j. A history file leaks credentials for graphasm, who can run bbot as root. Privilege escalation is achieved by abusing a custom bbot module to execute arbitrary commands.    Foothold  We start by a scan for open ports using Nmap: Nmap scan report for 10.10.11.57...</summary>
+
+  </entry>
+
+</feed>
+
+
